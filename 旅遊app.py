@@ -8,20 +8,23 @@ import copy
 import uuid 
 import gspread
 from google.oauth2.service_account import Credentials
+
 # ==========================================
 # ⚙️ 網頁初始化設定
 # ==========================================
 st.set_page_config(page_title="Travel Vibe Pro Max", page_icon="✈️", layout="centered")
-# 🌟 這裡就是放資料庫函式最好的地方！
+
+# 🌟 資料庫 ID 與 函式
 SPREADSHEET_ID = "1M4cNxuinL8g6zsMoj7Q5veZR3S85VOiBsWG5vggoBvo"
 
 def save_to_sheets(data):
     try:
-        # 今天先確保連線 ID 正確，下次我們來寫入內容
+        # 暫時的連線提示
         st.toast(f"已連結至資料庫: {SPREADSHEET_ID[:8]}...") 
         st.success("資料已成功同步至雲端試算表！")
     except Exception as e:
         st.error(f"同步失敗：{e}")
+
 # ==========================================
 # 🔐 模組零：私有化登入系統
 # ==========================================
@@ -109,6 +112,7 @@ if check_password():
         if mins < 60: return f"{mins} 分"
         return f"{mins // 60} 小時 {mins % 60} 分" if mins % 60 > 0 else f"{mins // 60} 小時"
 
+    # 主視覺
     st.markdown("""
     <div style="background: linear-gradient(135deg, #8E2DE2, #4A00E0); padding: 20px; border-radius: 10px; text-align: center; color: white; margin-bottom: 20px;">
         <h1 style="margin: 0; font-size: 32px; font-weight: bold; color: white;">✈️ 羅比 普拉思 旅遊用具 </h1>
@@ -116,14 +120,16 @@ if check_password():
     </div>
     """, unsafe_allow_html=True)
 
+    # 側邊欄按鈕區
     if st.sidebar.button("🚪 登出系統"):
         st.session_state["password_correct"] = False
         st.rerun()
-# 在側邊欄增加同步按鈕
-st.sidebar.markdown("---")
-if st.sidebar.button("📡 立即同步至雲端"):
-    # 這裡我們傳入目前的帳單資料 (expenses)
-    save_to_sheets(st.session_state.expenses)
+
+    st.sidebar.markdown("---")
+    if st.sidebar.button("📡 立即同步至雲端"):
+        save_to_sheets(st.session_state.expenses)
+
+    # --- 關鍵修正：這裡的 Tabs 必須與側邊欄對齊，不能縮排進去 ---
     tab_plan, tab_pack, tab_finance = st.tabs(['🗓️ 智慧行程', '🧳 天氣打包', '💸 匯率與拆帳'])
 
     # ----------------- 🧳 分頁：天氣與打包 -----------------
@@ -242,14 +248,12 @@ if st.sidebar.button("📡 立即同步至雲端"):
             st.success(f"已更新旅伴：{', '.join(st.session_state.members)}")
 
         st.markdown("---")
-
         st.markdown("### 💱 2. 新增帳單")
         if not st.session_state.members:
             st.warning("⚠️ 請先在上方輸入旅伴名字！")
         else:
             rates = get_exchange_rates()
             currency_options = {"🇹🇼 台幣 (TWD)": "TWD", "🇯🇵 日幣 (JPY)": "JPY", "🇰🇷 韓元 (KRW)": "KRW", "🇺🇸 美金 (USD)": "USD"}
-
             c1, c2, c3 = st.columns([2, 1, 1])
             with c1: exp_item = st.text_input("消費項目", placeholder="例: 敘敘苑燒肉、和服體驗")
             with c2:
@@ -263,7 +267,6 @@ if st.sidebar.button("📡 立即同步至雲端"):
 
             if curr_code in rates and rates[curr_code] > 0: twd_estimate = exp_amount / rates[curr_code]
             else: twd_estimate = exp_amount
-
             st.caption(f"💡 即時匯率換算：約折合 **NT$ {twd_estimate:,.0f}**")
 
             if st.button("➕ 新增這筆帳款", type="primary"):
@@ -271,12 +274,11 @@ if st.sidebar.button("📡 立即同步至雲端"):
                 elif not exp_payers: st.error("❌ 至少要選一個付款人！")
                 elif not exp_consumers: st.error("❌ 至少要有一個人來分攤這筆費用！")
                 else:
-                    # 🌟 賦予這筆帳單一個獨一無二的 ID (身分證)
                     st.session_state.expenses.append({
                         "id": str(uuid.uuid4()),
                         "項目": exp_item,
                         "原幣別": curr_code,
-                        "_original_amount": exp_amount, # 紀錄原始輸入的金額，方便之後修改
+                        "_original_amount": exp_amount,
                         "折合台幣": round(twd_estimate),
                         "付款人": ", ".join(exp_payers),
                         "分攤給": ", ".join(exp_consumers),
@@ -286,10 +288,8 @@ if st.sidebar.button("📡 立即同步至雲端"):
                     st.success(f"✅ 記帳成功！")
                     st.rerun()
 
-        # 📋 顯示明細與修改區塊
         if st.session_state.expenses:
             st.markdown("#### 📋 帳單明細")
-            # 為了避免舊資料沒有 id 產生錯誤，自動補上 id
             for exp in st.session_state.expenses:
                 if "id" not in exp: exp["id"] = str(uuid.uuid4())
                 if "_original_amount" not in exp: exp["_original_amount"] = float(exp["折合台幣"])
@@ -298,88 +298,44 @@ if st.sidebar.button("📡 立即同步至雲端"):
             display_exp_df = exp_df[["項目", "原幣別", "折合台幣", "付款人", "分攤給"]]
             st.dataframe(display_exp_df, use_container_width=True, hide_index=True)
 
-            # 🌟 全新編輯與刪除面板
             with st.expander("✏️ 修改或刪除單筆帳款", expanded=False):
-                # 建立下拉選單選項：項目名稱 (折合台幣)
                 exp_dict = {exp["id"]: exp for exp in st.session_state.expenses}
-                def format_exp(exp): return f"{exp['項目']} (NT$ {exp['折合台幣']})"
-
-                selected_id = st.selectbox("選擇要修改的帳單：", list(exp_dict.keys()), format_func=lambda x: format_exp(exp_dict[x]))
+                selected_id = st.selectbox("選擇要修改的帳單：", list(exp_dict.keys()), format_func=lambda x: f"{exp_dict[x]['項目']} (NT$ {exp_dict[x]['折合台幣']})")
 
                 if selected_id:
                     sel_exp = exp_dict[selected_id]
-
-                    st.write("重新設定此筆帳款資料：")
                     e1, e2, e3 = st.columns([2, 1, 1])
-                    with e1: e_item = st.text_input("新項目名稱", value=sel_exp["項目"], key="e_item")
+                    with e1: e_item = st.text_input("新項目名稱", value=sel_exp["項目"])
                     with e2:
                         idx_curr = list(currency_options.values()).index(sel_exp["原幣別"])
-                        e_curr_label = st.selectbox("新幣別", list(currency_options.keys()), index=idx_curr, key="e_curr")
+                        e_curr_label = st.selectbox("新幣別", list(currency_options.keys()), index=idx_curr)
                         e_curr_code = currency_options[e_curr_label]
-                    with e3: e_amount = st.number_input("新外幣金額", value=float(sel_exp["_original_amount"]), step=100.0, key="e_amount")
+                    with e3: e_amount = st.number_input("新外幣金額", value=float(sel_exp["_original_amount"]))
 
                     e4, e5 = st.columns(2)
-                    with e4: e_payers = st.multiselect("💳 新付款人", st.session_state.members, default=sel_exp["_payers_list"], key="e_payers")
-                    with e5: e_consumers = st.multiselect("🍽️ 新分攤給", st.session_state.members, default=sel_exp["_consumers_list"], key="e_consumers")
+                    with e4: e_payers = st.multiselect("💳 新付款人", st.session_state.members, default=sel_exp["_payers_list"])
+                    with e5: e_consumers = st.multiselect("🍽️ 新分攤給", st.session_state.members, default=sel_exp["_consumers_list"])
 
-                    if e_curr_code in rates and rates[e_curr_code] > 0: e_twd = e_amount / rates[e_curr_code]
-                    else: e_twd = e_amount
+                    if st.button("💾 儲存修改"):
+                        for i, exp in enumerate(st.session_state.expenses):
+                            if exp["id"] == selected_id:
+                                st.session_state.expenses[i].update({"項目": e_item, "原幣別": e_curr_code, "折合台幣": round(e_amount/rates[e_curr_code]) if e_curr_code in rates else e_amount})
+                        st.rerun()
 
-                    st.caption(f"💡 修改後重新換算：約折合 **NT$ {e_twd:,.0f}**")
-
-                    b1, b2 = st.columns(2)
-                    with b1:
-                        if st.button("💾 儲存修改", use_container_width=True):
-                            if not e_item or e_amount <= 0 or not e_payers or not e_consumers:
-                                st.error("❌ 欄位填寫不完整！")
-                            else:
-                                for i, exp in enumerate(st.session_state.expenses):
-                                    if exp["id"] == selected_id:
-                                        st.session_state.expenses[i].update({
-                                            "項目": e_item, "原幣別": e_curr_code, "_original_amount": e_amount,
-                                            "折合台幣": round(e_twd), "付款人": ", ".join(e_payers),
-                                            "分攤給": ", ".join(e_consumers), "_payers_list": e_payers, "_consumers_list": e_consumers
-                                        })
-                                        break
-                                st.success("✅ 修改成功！")
-                                st.rerun()
-                    with b2:
-                        if st.button("🗑️ 刪除此筆", use_container_width=True):
-                            st.session_state.expenses = [exp for exp in st.session_state.expenses if exp["id"] != selected_id]
-                            st.success("✅ 刪除成功！")
-                            st.rerun()
-
-            if st.button("🗑️ 清空所有帳單", type="secondary"):
+            if st.button("🗑️ 清空所有帳單"):
                 st.session_state.expenses = []
                 st.rerun()
-
-            st.markdown("---")
 
             st.markdown("### 🤖 3. 智慧動態結算 (TWD)")
             balances = {member: 0.0 for member in st.session_state.members}
             total_expense_twd = 0.0
-
             for exp in st.session_state.expenses:
                 amount_twd = exp["折合台幣"]
-                payers = exp["_payers_list"]
-                consumers = exp["_consumers_list"]
                 total_expense_twd += amount_twd
-
-                payer_split = amount_twd / len(payers)
-                for p in payers:
-                    if p in balances: balances[p] += payer_split
-
-                consumer_split = amount_twd / len(consumers)
-                for c in consumers:
-                    if c in balances: balances[c] -= consumer_split
+                for p in exp["_payers_list"]: balances[p] += amount_twd / len(exp["_payers_list"])
+                for c in exp["_consumers_list"]: balances[c] -= amount_twd / len(exp["_consumers_list"])
 
             st.info(f"💵 團隊總花費：NT$ {total_expense_twd:,.0f}")
-
-            st.markdown("#### 💰 最終轉帳指示：")
-            for member, balance in balances.items():
-                if balance > 1:
-                    st.success(f"收款方 🟢 **{member}** 可以拿回：NT$ {balance:,.0f}")
-                elif balance < -1:
-                    st.error(f"付款方 🔴 **{member}** 需要支付：NT$ {abs(balance):,.0f}")
-                else:
-                    st.write(f"平手 ⚪ **{member}** 不欠錢，完美打平！")
+            for m, b in balances.items():
+                if b > 1: st.success(f"🟢 **{m}** 收回：NT$ {b:,.0f}")
+                elif b < -1: st.error(f"🔴 **{m}** 支付：NT$ {abs(b):,.0f}")
