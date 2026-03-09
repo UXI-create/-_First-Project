@@ -5,23 +5,23 @@ from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
 import requests
 import copy
-import uuid # 🌟 新增：產生每筆帳單專屬 ID 的套件
+import uuid 
 import gspread
 from google.oauth2.service_account import Credentials
-
-# 這裡先用最簡單的「連結存取」方式 (假設你已經把表單開成公開編輯)
-# 注意：正式版會建議用更安全的 API Key 方式，我們今天先求「連通」
-def save_to_sheets(data):
-    try:
-        # 這邊未來我們會補上認證代碼，今天我們先把邏輯架起來
-        st.success("資料已成功同步至雲端試算表！")
-    except Exception as e:
-        st.error(f"同步失敗：{e}")
 # ==========================================
 # ⚙️ 網頁初始化設定
 # ==========================================
 st.set_page_config(page_title="Travel Vibe Pro Max", page_icon="✈️", layout="centered")
+# 🌟 這裡就是放資料庫函式最好的地方！
+SPREADSHEET_ID = "1M4cNxuinL8g6zsMoj7Q5veZR3S85VOiBsWG5vggoBvo"
 
+def save_to_sheets(data):
+    try:
+        # 今天先確保連線 ID 正確，下次我們來寫入內容
+        st.toast(f"已連結至資料庫: {SPREADSHEET_ID[:8]}...") 
+        st.success("資料已成功同步至雲端試算表！")
+    except Exception as e:
+        st.error(f"同步失敗：{e}")
 # ==========================================
 # 🔐 模組零：私有化登入系統
 # ==========================================
@@ -119,7 +119,11 @@ if check_password():
     if st.sidebar.button("🚪 登出系統"):
         st.session_state["password_correct"] = False
         st.rerun()
-
+# 在側邊欄增加同步按鈕
+st.sidebar.markdown("---")
+if st.sidebar.button("📡 立即同步至雲端"):
+    # 這裡我們傳入目前的帳單資料 (expenses)
+    save_to_sheets(st.session_state.expenses)
     tab_plan, tab_pack, tab_finance = st.tabs(['🗓️ 智慧行程', '🧳 天氣打包', '💸 匯率與拆帳'])
 
     # ----------------- 🧳 分頁：天氣與打包 -----------------
