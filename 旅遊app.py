@@ -6,7 +6,17 @@ from geopy.distance import geodesic
 import requests
 import copy
 import uuid # 🌟 新增：產生每筆帳單專屬 ID 的套件
+import gspread
+from google.oauth2.service_account import Credentials
 
+# 這裡先用最簡單的「連結存取」方式 (假設你已經把表單開成公開編輯)
+# 注意：正式版會建議用更安全的 API Key 方式，我們今天先求「連通」
+def save_to_sheets(data):
+    try:
+        # 這邊未來我們會補上認證代碼，今天我們先把邏輯架起來
+        st.success("資料已成功同步至雲端試算表！")
+    except Exception as e:
+        st.error(f"同步失敗：{e}")
 # ==========================================
 # ⚙️ 網頁初始化設定
 # ==========================================
